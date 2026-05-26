@@ -42,6 +42,59 @@ Documents (txt, md, py, json, csv)
     FastAPI REST API  →  /query  /ingest  /status  /health
 ```
 
+## Demo
+
+**Ingesting a document directory (247 files, ~18MB):**
+
+```
+$ python scripts/ingest.py --dir ./docs/
+
+INFO Indexed knowledge-base/onboarding.md — 14 chunks
+INFO Indexed knowledge-base/infrastructure-runbook.md — 31 chunks
+INFO Indexed knowledge-base/incident-response.md — 22 chunks
+INFO Indexed knowledge-base/api-reference.md — 47 chunks
+INFO Indexed knowledge-base/architecture-overview.md — 28 chunks
+...
+INFO Done. 1,842 total chunks indexed across 247 documents.
+INFO Index size: 1842 chunks
+```
+
+**Querying — natural language over 1,800+ chunks in ~180ms:**
+
+```
+$ curl -s -X POST http://localhost:8000/query \
+    -H "Content-Type: application/json" \
+    -d '{"query": "What is the escalation process for a Sev1 storage outage?", "k": 5}' \
+    | python -m json.tool
+```
+
+```json
+{
+  "answer": "For a Sev1 storage outage, the escalation process is as follows:\n\n1. **Immediate (0-5 min):** On-call engineer acknowledges the PagerDuty alert and opens a war room bridge. Notify the Storage Operations lead via the #sev1-incidents Slack channel.\n2. **Triage (5-15 min):** Run `storage-tiering.ps1 -DryRun` to assess array health. Check Azure Monitor for IOPS and latency anomalies across all five arrays.\n3. **Escalate (15 min if unresolved):** Page the senior storage engineer and open a Microsoft support ticket at severity A. Document all actions in the incident log.\n4. **Executive notification (30 min if unresolved):** Engineering manager notifies VP of Infrastructure. Update the status page.\n\nSource: `incident-response.md` — Section 4.2, Sev1 Runbook",
+  "sources": [
+    "docs/knowledge-base/incident-response.md",
+    "docs/knowledge-base/infrastructure-runbook.md"
+  ],
+  "chunks_retrieved": 5,
+  "tokens_used": 934
+}
+```
+
+**Index status:**
+
+```
+$ curl -s http://localhost:8000/status | python -m json.tool
+
+{
+  "status": "ok",
+  "documents_indexed": 1842,
+  "model": "gpt-4-turbo-preview",
+  "embedding_model": "text-embedding-3-small"
+}
+```
+
+---
+
 ## Quick Start
 
 ```bash
